@@ -1,0 +1,100 @@
+#!/bin/bash
+if [ ! -e backup ]
+then
+    #Ask for root if mediabox user do not exist
+  if [ "$(whoami)" != "root" ]
+    then
+      echo "Script need to be run as root"
+      exec sudo -- "$0" "$@"
+      exit 0
+  fi
+
+  #If mediabox user do not exist
+  if [ "$(id -u mediabox)" != "0" ]
+  then
+    useradd -m -d /home/mediabox mediabox
+  fi
+  id=$(id -u mediabox)
+  echo "mediabox user created with id: "$id
+
+  localhostname=$(hostname).local
+
+  while [ -z $datapath ]
+  do
+    echo "(In this folder will be created the following hierarchy:"
+    echo "|_ data path"
+    echo "  |_ downloads"
+    echo "    |_incomplete"
+    echo "      |_tv"
+    echo "      |_movies"
+    echo "    |_complete"
+    echo "      |_tv"
+    echo "      |_movies"
+    echo "  |_ media"
+    echo "    |_tv"
+    echo "    |_movies"
+    echo ")"
+    echo "Enter data path :"
+    read datapath
+  done
+
+  while [ -z $configpath ]
+  do
+    echo "Enter config path :"
+    read configpath
+  done
+
+  echo "Enter domain:"
+  read host
+
+  echo "Enter mail address:"
+  read mail
+
+  echo 'export DATA_DIR='$datapath > ./backup
+  echo 'export CONFIG_DIR='$configpath >> ./backup
+  echo 'export HOST_EXT='$host >> ./backup
+  echo 'export HOST_LOCAL='$localhostname >> ./backup
+  echo 'export MAIL='$mail >> ./backup
+  echo 'export DOWNLOAD_DIR='$datapath"/downloads" >> ./backup
+  echo 'export MEDIA_DIR='$datapath"/media" >> ./backup
+  echo 'export TRANSMISSION_WATCH_DIR='$configpath"/transmission/watch" >> ./backup
+  echo 'export DOMAIN='$host >> ./backup
+  echo 'export TZ="Europe/Paris"' >> ./backup
+  echo 'export ID='$id >> ./backup
+fi
+
+. ./backup
+
+pass1="a"
+pass2="b"
+
+while [ $pass2 != $pass1 ]
+do
+  echo "Enter mediabox password:"
+  read -s pass1
+
+  while [ -z $pass1 ]
+  do
+    echo "Password is required."
+    echo "Enter mediabox password:"
+    read -s pass1
+  done
+
+  echo "Confirm password:"
+  read -s pass2
+
+  if [ $pass2 != $pass1 ]
+  then
+    echo "Password are different. Retry..."
+  fi
+done
+
+export ROOT_PWD=$pass1
+
+docker-compose up --build -d --remove-orphans
+
+sleep 2
+
+sudo cp -rn ./settings/* $CONFIG_DIR/
+
+sudo chown mediabox:mediabox -R $CONFIG_DIR/letsencrypt/

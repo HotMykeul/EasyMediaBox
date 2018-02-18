@@ -1,0 +1,3 @@
+[submodule "settings/letsencrypt/www/Dashboard"]
+	path = settings/letsencrypt/www/Dashboard
+	url = https://github.com/causefx/Organizr.git
